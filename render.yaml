@@ -1,4 +1,4 @@
-# Render Blueprint — TaskFlow Pro backend
+﻿# Render Blueprint ג€” TaskFlow Pro backend
 # Docs: https://render.com/docs/blueprint-spec
 #
 # The PostgreSQL database is NOT created here on purpose: use a free external
@@ -10,7 +10,7 @@ services:
     name: taskflow-pro-api
     runtime: node
     plan: free
-    region: frankfurt
+    region: ohio
     branch: main
     # --include=dev: TypeScript and Prisma CLI are needed to build even when NODE_ENV=production
     buildCommand: npm ci --include=dev && npm run build
