@@ -1,0 +1,93 @@
+// TaskFlow Pro — database schema (PostgreSQL)
+//
+// Allowed values for role / status / priority are enforced by CHECK
+// constraints in the migration SQL (prisma/migrations) and by Zod in the API.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Users of the system: Admin (team manager) or Employee
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(100)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash")
+  /// 'Admin' | 'Employee'
+  role         String   @db.VarChar(20)
+  /// Incremented on logout — invalidates all previously issued JWTs
+  tokenVersion Int      @default(0) @map("token_version")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  createdProjects Project[] @relation("ProjectCreator")
+  createdTasks    Task[]    @relation("TaskCreator")
+  assignedTasks   Task[]    @relation("TaskAssignee")
+  comments        Comment[]
+
+  @@map("users")
+}
+
+model Project {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(150)
+  description String?
+  startDate   DateTime  @map("start_date") @db.Date
+  endDate     DateTime? @map("end_date") @db.Date
+  /// 'Active' | 'Completed' | 'On Hold'
+  status      String    @default("Active") @db.VarChar(20)
+  createdById Int       @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  createdBy User   @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  tasks     Task[]
+
+  @@index([status])
+  @@map("projects")
+}
+
+model Task {
+  id           Int      @id @default(autoincrement())
+  title        String   @db.VarChar(200)
+  description  String?
+  assignedToId Int      @map("assigned_to")
+  createdById  Int      @map("created_by")
+  projectId    Int      @map("project_id")
+  /// 'Low' | 'Medium' | 'High'
+  priority     String   @db.VarChar(10)
+  /// 'To Do' | 'In Progress' | 'Done'
+  status       String   @default("To Do") @db.VarChar(20)
+  dueDate      DateTime @map("due_date") @db.Date
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  assignedTo User      @relation("TaskAssignee", fields: [assignedToId], references: [id], onDelete: Restrict)
+  createdBy  User      @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  comments   Comment[]
+
+  @@index([assignedToId])
+  @@index([projectId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  taskId    Int      @map("task_id")
+  userId    Int      @map("user_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([taskId])
+  @@map("comments")
+}

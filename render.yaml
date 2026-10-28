@@ -1,0 +1,45 @@
+# Render Blueprint — TaskFlow Pro backend
+# Docs: https://render.com/docs/blueprint-spec
+#
+# The PostgreSQL database is NOT created here on purpose: use a free external
+# PostgreSQL provider (Neon / Supabase) and paste its connection string into
+# DATABASE_URL. This keeps the server and the database provider independent.
+
+services:
+  - type: web
+    name: taskflow-pro-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    # --include=dev: TypeScript and Prisma CLI are needed to build even when NODE_ENV=production
+    buildCommand: npm ci --include=dev && npm run build
+    # migrations -> seed only if the database is empty -> start the server
+    startCommand: npm run start:render
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # Paste the connection string from Neon/Supabase (Render asks for it on creation)
+      - key: DATABASE_URL
+        sync: false
+      # Render generates a long random secret automatically
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 2h
+      # The address of your React client, e.g. https://taskflow-client.onrender.com
+      - key: CORS_ORIGINS
+        sync: false
+      - key: LOGIN_RATE_LIMIT_MAX
+        value: "10"
+      # Demo data on the first start (only when the database is empty)
+      - key: SEED_ADMIN_EMAIL
+        value: admin@taskflow.test
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+      - key: SEED_EMPLOYEE_PASSWORD
+        sync: false
